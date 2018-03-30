@@ -1,50 +1,67 @@
 package com.example;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.w3c.dom.Document;
+
 public class QuickbaseAuth {
+
+	private StringBuilder data;
+	private String userToken;
+	private String ticket;
+	private String userId;
 	
-	private String urlLink = "https://unlimitedcompanies.quickbase.com/db/main";
-	private String data = "<qdbapi><username>uec_ops_support@unlimitedcompanies.com</username><password>accountPassword</password></qdbapi>";
-	private String xmlResponse;
-	
-	public QuickbaseAuth() throws Exception {
+	public QuickbaseAuth(String username, String password, String userToken) throws Exception {
+		
+		this.userToken = userToken;
+		data = new StringBuilder();
+		data.append("<qdbapi><username>");
+		data.append(username);
+		data.append("</username><password>");
+		data.append(password);
+		data.append("</password></qdbapi>");
 		
 		OutputStream outStream;
 		
-		URL url = new URL(urlLink);
+		URL url = new URL("https://unlimitedcompanies.quickbase.com/db/main");
 		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 		
 		conn.setRequestMethod("POST");
 		conn.setRequestProperty("Content-Type", "application/xml");
 		conn.setRequestProperty("QUICKBASE-ACTION", "API_Authenticate");
-		conn.setRequestProperty("usertoken", "bzzaw3_dd2i_dhgcgfadikek3k9h3eh7dmi45z");
+		conn.setRequestProperty("usertoken", this.userToken);
 		conn.setDoOutput(true);
 		
 		outStream = conn.getOutputStream();
 		BufferedWriter outStreamW = new BufferedWriter(new OutputStreamWriter(outStream));
-		outStreamW.write(data);
+		outStreamW.write(data.toString());
 		outStreamW.flush();
 		outStreamW.close();
 		
-		StringBuffer sb = new StringBuffer();
-		BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-		String line;
+		DocumentBuilderFactory dBuildFactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder dBuilder = dBuildFactory.newDocumentBuilder();
+		Document doc = dBuilder.parse(conn.getInputStream());
+		doc.normalize();
 		
-		while ((line = in.readLine()) != null) {
-			sb.append(line);
+		if (doc.getElementsByTagName("errcode").item(0).getTextContent().equals("0")) {
+			ticket = doc.getElementsByTagName("ticket").item(0).getTextContent();
+			userId = doc.getElementsByTagName("userid").item(0).getTextContent();
 		}
 		
-		this.xmlResponse = sb.toString();
 	}
 	
-	public String getResponse() {
-		return this.xmlResponse;
+	public String getTicket() {
+		return this.ticket;
+	}
+	
+	public String getUserId() {
+		return this.userId;
 	}
 }
